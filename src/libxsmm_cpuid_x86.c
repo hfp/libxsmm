@@ -237,7 +237,7 @@ LIBXSMM_API int libxsmm_cpuid_x86(libxsmm_cpuid_info* info)
           {
             fprintf(stderr, "LIBXSMM WARNING: AMX state allocation in the OS failed!\n");
           }
-          feature_cpu = LIBXSMM_X86_AVX512_CLX;
+          feature_cpu = LIBXSMM_X86_AVX512_SPR - 1; /* LIBXSMM_X86_AVX512_CPX */
         }
       }
 # if !defined(LIBXSMM_INTRINSICS_DEBUG)
