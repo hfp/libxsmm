@@ -64,12 +64,14 @@ LIBXSMM_API void libxsmm_rng_seq(void* data, size_t nbytes)
   }
   end = (unsigned char*)data + nbytes;
   if (dst < end) {
+    const size_t size = end - dst;
 #if defined(LIBXSMM_RNG_DRAND48)
     r = (unsigned int)lrand48();
 #else
     r = (unsigned int)rand();
 #endif
-    LIBXSMM_MEMCPY127(dst, &r, end - dst);
+    LIBXSMM_ASSERT(size < sizeof(r));
+    LIBXSMM_MEMCPY127(dst, &r, size);
   }
 }
 
