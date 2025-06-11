@@ -1179,7 +1179,7 @@
           REAL(C_DOUBLE), INTENT(IN) :: a, b
           REAL(C_DOUBLE), INTENT(INOUT) :: c
           INTERFACE
-            PURE SUBROUTINE internal_gemm(transa, transb, m, n, k,      &
+            PURE SUBROUTINE internal_gemmA(transa, transb, m, n, k,     &
      &      alpha, a, lda, b, ldb, beta, c, ldc)                        &
      &      BIND(C, NAME="libxsmm_dgemm_")
               IMPORT :: C_CHAR, C_DOUBLE, LIBXSMM_BLASINT_KIND
@@ -1193,7 +1193,7 @@
               REAL(C_DOUBLE), INTENT(INOUT) :: c
             END SUBROUTINE
           END INTERFACE
-          CALL internal_gemm(transa, transb, m, n, k,                   &
+          CALL internal_gemmA(transa, transb, m, n, k,                  &
      &      alpha, a, lda, b, ldb, beta, c, ldc)
         END SUBROUTINE
 
@@ -1265,7 +1265,7 @@
           REAL(C_FLOAT), INTENT(IN)    :: a, b
           REAL(C_FLOAT), INTENT(INOUT) :: c
           INTERFACE
-            PURE SUBROUTINE internal_gemm(transa, transb, m, n, k,      &
+            PURE SUBROUTINE internal_gemmB(transa, transb, m, n, k,     &
      &      alpha, a, lda, b, ldb, beta, c, ldc)                        &
      &      BIND(C, NAME="libxsmm_sgemm_")
               IMPORT :: C_CHAR, C_FLOAT, LIBXSMM_BLASINT_KIND
@@ -1279,7 +1279,7 @@
               REAL(C_FLOAT), INTENT(INOUT) :: c
             END SUBROUTINE
           END INTERFACE
-          CALL internal_gemm(transa, transb, m, n, k,                   &
+          CALL internal_gemmB(transa, transb, m, n, k,                  &
      &      alpha, a, lda, b, ldb, beta, c, ldc)
         END SUBROUTINE
 
@@ -1352,7 +1352,7 @@
           REAL(C_DOUBLE), INTENT(IN)    :: a, b
           REAL(C_DOUBLE), INTENT(INOUT) :: c
           INTERFACE
-            PURE SUBROUTINE internal_gemm(transa, transb, m, n, k,      &
+            PURE SUBROUTINE internal_gemmC(transa, transb, m, n, k,     &
      &      alpha, a, lda, b, ldb, beta, c, ldc)                        &
      &      BIND(C, NAME="libxsmm_blas_dgemm_")
               IMPORT :: C_CHAR, C_DOUBLE, LIBXSMM_BLASINT_KIND
@@ -1366,7 +1366,7 @@
               REAL(C_DOUBLE), INTENT(INOUT) :: c
             END SUBROUTINE
           END INTERFACE
-          CALL internal_gemm(transa, transb, m, n, k,                   &
+          CALL internal_gemmC(transa, transb, m, n, k,                  &
      &      alpha, a, lda, b, ldb, beta, c, ldc)
         END SUBROUTINE
 
@@ -1442,7 +1442,7 @@
           REAL(C_FLOAT), INTENT(IN)    :: a, b
           REAL(C_FLOAT), INTENT(INOUT) :: c
           INTERFACE
-            PURE SUBROUTINE internal_gemm(transa, transb, m, n, k,      &
+            PURE SUBROUTINE internal_gemmD(transa, transb, m, n, k,     &
      &      alpha, a, lda, b, ldb, beta, c, ldc)                        &
      &      BIND(C, NAME="libxsmm_blas_sgemm_")
               IMPORT :: C_CHAR, C_FLOAT, LIBXSMM_BLASINT_KIND
@@ -1456,7 +1456,7 @@
               REAL(C_FLOAT), INTENT(INOUT) :: c
             END SUBROUTINE
           END INTERFACE
-          CALL internal_gemm(transa, transb, m, n, k,                   &
+          CALL internal_gemmD(transa, transb, m, n, k,                  &
      &      alpha, a, lda, b, ldb, beta, c, ldc)
         END SUBROUTINE
 
