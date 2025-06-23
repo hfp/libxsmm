@@ -2035,7 +2035,7 @@ void ref_fused_matmul( gemm_def* i_gemm_def_in, void* l_a, void* l_b, void* l_c_
       const char* env_arch = getenv("LIBXSMM_TARGET");
       const int is_env_DMR = (env_arch == NULL) ? 0 : ( env_arch == libxsmm_stristr(env_arch, "dmr"));
       int arch_cpuid = libxsmm_cpuid(NULL);
-      if ((!is_env_DMR && arch_cpuid < LIBXSMM_X86_AVX512_DMR) || (i_gemm_def->vnni_a == 0) || (( arch_cpuid >= LIBXSMM_AARCH64_V81 ) &&  ( arch_cpuid <= LIBXSMM_AARCH64_ALLFEAT )) ) {
+      if ((!is_env_DMR && arch_cpuid < LIBXSMM_X86_AVX512_DMR) || (i_gemm_def->vnni_a == 0) || (( arch_cpuid >= LIBXSMM_AARCH64_V81 ) &&  ( arch_cpuid <= LIBXSMM_AARCH64_ALLFEAT )) || (( arch_cpuid >= LIBXSMM_RV64_MVL128 ) &&  ( arch_cpuid <= LIBXSMM_RV64_ALLFEAT )) ) {
         char *l_c_tmp = (char*)libxsmm_aligned_malloc((size_t)i_gemm_def->ldc * (size_t)i_gemm_def->n * sizeof(float), 64);
         i_gemm_def->c_type = LIBXSMM_DATATYPE_F32;
         libxsmm_convert_bf8_f32( (libxsmm_bfloat8*)l_c_gold, (float*)l_c_tmp, i_gemm_def->ldc*i_gemm_def->n );
@@ -2058,7 +2058,7 @@ void ref_fused_matmul( gemm_def* i_gemm_def_in, void* l_a, void* l_b, void* l_c_
       const char* env_arch = getenv("LIBXSMM_TARGET");
       const int is_env_DMR = (env_arch == NULL) ? 0 : ( env_arch == libxsmm_stristr(env_arch, "dmr"));
       int arch_cpuid = libxsmm_cpuid(NULL);
-      if ((!is_env_DMR && arch_cpuid < LIBXSMM_X86_AVX512_DMR) || (i_gemm_def->vnni_a == 0) || (( arch_cpuid >= LIBXSMM_AARCH64_V81 ) &&  ( arch_cpuid <= LIBXSMM_AARCH64_ALLFEAT ))) {
+      if ((!is_env_DMR && arch_cpuid < LIBXSMM_X86_AVX512_DMR) || (i_gemm_def->vnni_a == 0) || (( arch_cpuid >= LIBXSMM_AARCH64_V81 ) &&  ( arch_cpuid <= LIBXSMM_AARCH64_ALLFEAT )) || (( arch_cpuid >= LIBXSMM_RV64_MVL128 ) &&  ( arch_cpuid <= LIBXSMM_RV64_ALLFEAT )) ) {
         char *l_c_tmp = (char*)libxsmm_aligned_malloc((size_t)i_gemm_def->ldc * (size_t)i_gemm_def->n * sizeof(float), 64);
         i_gemm_def->c_type = LIBXSMM_DATATYPE_F32;
         libxsmm_convert_hf8_f32( (libxsmm_hfloat8*)l_c_gold, (float*)l_c_tmp, i_gemm_def->ldc*i_gemm_def->n );
@@ -2479,9 +2479,9 @@ double jit_matmul( const gemm_def*    i_gemm_def,
     gemm_param.a.primary = (void*)i_a;
     gemm_param.b.primary = (void*)i_b;
     if ( l_info.prefetch != LIBXSMM_GEMM_PREFETCH_NONE ) {
-      gemm_param.a.quaternary = (void*)i_a;
-      gemm_param.b.quaternary = (void*)i_b;
-      gemm_param.c.quaternary = (void*)o_c;
+      gemm_param.a.senary = (void*)i_a;
+      gemm_param.b.senary = (void*)i_b;
+      gemm_param.c.senary = (void*)o_c;
     }
 #if defined(USE_GEMM_EXT_FRONTEND)
     l_test_jit.gemm_ext( &gemm_param );
@@ -2555,9 +2555,9 @@ double jit_matmul( const gemm_def*    i_gemm_def,
     gemm_param.a.primary = (void*)i_a;
     gemm_param.b.primary = (void*)i_b;
     if ( l_info.prefetch != LIBXSMM_GEMM_PREFETCH_NONE ) {
-      gemm_param.a.quaternary = (void*)i_a;
-      gemm_param.b.quaternary = (void*)i_b;
-      gemm_param.c.quaternary = (void*)o_c_perf;
+      gemm_param.a.senary = (void*)i_a;
+      gemm_param.b.senary = (void*)i_b;
+      gemm_param.c.senary = (void*)o_c_perf;
     }
     for (l_t = 0; l_t < (size_t)i_reps; l_t++) {
 #if defined(USE_GEMM_EXT_FRONTEND)
@@ -2689,7 +2689,7 @@ void print_help(void) {
   printf("    0: A normal, 1: A vnni\n");
   printf("    0: B normal, 1: B vnni\n");
   printf("    0: C normal, 1: C vnni\n");
-  printf("    PREFETCH: nopf (none), BL2viaC, AL2, curAL2, AL2_BL2viaC, curAL2_BL2viaC\n");
+  printf("    PREFETCH: nopf (none), AL2\n");
   printf("    BRGEMM/SPMM: nobr, addrbr, offsbr, strdbr, spmm\n");
   printf("    BRsize: 1 - N (or sparsity factor for spmm)\n");
   printf("    BRunroll: 0/1\n");
@@ -2765,6 +2765,9 @@ int main(int argc, char* argv []) {
   unsigned int l_keep_going = 0;
   unsigned int l_retry_case = 0;
   float l_spfrac = 0.4;
+  double l_dtype_a_size = 0.0;
+  double l_dtype_b_size = 0.0;
+  double l_dtype_c_size = 0.0;
 
 # if defined(__APPLE__) && defined(__arm64__)
 #  if 1
@@ -2791,10 +2794,12 @@ int main(int argc, char* argv []) {
     l_c_dt = argv[4];
     l_gemm_def.fuse_zpt_sub = 0;
     if (strcmp(argv[1], "I4") == 0) {
+      l_dtype_a_size = 0.5;
       l_gemm_def.is_Ai4Bf16_gemm = 1;
       l_dtype_a    = LIBXSMM_DATATYPE_I8;
       l_gemm_def.fuse_zpt_sub = 1;
     } else if (strcmp(argv[1], "U4") == 0) {
+      l_dtype_a_size = 0.5;
       if (strcmp(argv[2], "F16") == 0) {
         l_gemm_def.is_Ai4Bf16_gemm = 1;
         l_dtype_a    = LIBXSMM_DATATYPE_U8;
@@ -2805,6 +2810,7 @@ int main(int argc, char* argv []) {
       }
       l_gemm_def.fuse_zpt_sub = 1;
     } else if (strcmp(argv[1], "MXFP4") == 0) {
+      l_dtype_a_size = 0.53125;
       if (strcmp(argv[2], "BF16") == 0) {
         l_gemm_def.is_Amxfp4Bbf16_gemm = 1;
         l_dtype_a    = LIBXSMM_DATATYPE_I8;
@@ -2818,20 +2824,31 @@ int main(int argc, char* argv []) {
         l_dtype_a    = LIBXSMM_DATATYPE_I8;
       }
     } else if (strcmp(argv[1], "BF8") == 0 && strcmp(argv[2], "BF16") == 0) {
+      l_dtype_a_size = 1;
       l_gemm_def.is_Abf8Bbf16_gemm = 1;
       l_dtype_a    = LIBXSMM_DATATYPE_BF16;
     } else if (strcmp(argv[1], "BF8") == 0 && strcmp(argv[2], "F16") == 0 && atoi(argv[17]) > 0) {
+      l_dtype_a_size = 1;
       l_gemm_def.is_Abf8Bf16_gemm = 1;
       l_dtype_a    = LIBXSMM_DATATYPE_F16;
     } else if (strcmp(argv[1], "HF8") == 0 && strcmp(argv[2], "BF16") == 0) {
+      l_dtype_a_size = 1;
       l_gemm_def.is_Ahf8Bbf16_gemm = 1;
       l_dtype_a    = LIBXSMM_DATATYPE_BF16;
     } else {
       l_dtype_a    = char_to_libxsmm_datatype( l_a_dt );
+      l_dtype_a_size = (double)(LIBXSMM_TYPESIZE(l_dtype_a));
     }
     l_dtype_b    = char_to_libxsmm_datatype( l_b_dt );
     l_dtype_comp = char_to_libxsmm_datatype( l_comp_dt );
     l_dtype_c    = char_to_libxsmm_datatype( l_c_dt );
+    l_dtype_b_size = (double)(LIBXSMM_TYPESIZE(l_dtype_b));
+    l_dtype_c_size = (double)(LIBXSMM_TYPESIZE(l_dtype_c));
+
+    /* setting vlaues to avoid diff by zero */
+    l_dtype_a_size = ( l_dtype_a_size == 0.0 ) ? 1.0 : l_dtype_a_size;
+    l_dtype_b_size = ( l_dtype_b_size == 0.0 ) ? 1.0 : l_dtype_b_size;
+    l_dtype_c_size = ( l_dtype_c_size == 0.0 ) ? 1.0 : l_dtype_c_size;
 
     /* xgemm sizes */
     l_m = atoi(argv[5]);
@@ -2856,20 +2873,8 @@ int main(int argc, char* argv []) {
     if (strcmp("nopf", argv[20]) == 0) {
       l_prefetch = LIBXSMM_GEMM_PREFETCH_NONE;
     }
-    else if (strcmp("BL2viaC", argv[20]) == 0) {
-      l_prefetch = LIBXSMM_GEMM_PREFETCH_BL2_VIA_C;
-    }
-    else if (strcmp("curAL2", argv[20]) == 0) {
-      l_prefetch = LIBXSMM_GEMM_PREFETCH_AL2_AHEAD;
-    }
-    else if (strcmp("curAL2_BL2viaC", argv[20]) == 0) {
-      l_prefetch = LIBXSMM_GEMM_PREFETCH_AL2BL2_VIA_C_AHEAD;
-    }
     else if (strcmp("AL2", argv[20]) == 0) {
       l_prefetch = LIBXSMM_GEMM_PREFETCH_AL2;
-    }
-    else if (strcmp("AL2_BL2viaC", argv[20]) == 0) {
-      l_prefetch = LIBXSMM_GEMM_PREFETCH_AL2BL2_VIA_C;
     }
     else {
       print_help();
@@ -3789,6 +3794,7 @@ int main(int argc, char* argv []) {
     if ( l_file_input == 0 ) {
       printf("%fs for libxsmm\n", l_runtime_libxsmm);
       printf("%f GFLOPS for libxsmm\n", ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br) * (double)l_n_threads * 2.0) / (l_runtime_libxsmm * 1.0e9));
+      printf("%f GB/s\n", ((double)((double)l_reps * (((((double)l_m * (double)l_k * l_dtype_a_size) + ((double)l_k * (double)l_n * l_dtype_b_size)) * (double)l_br) + ((double)l_m * (double)l_n * l_dtype_c_size)) * (double)l_n_threads)) / (l_runtime_libxsmm * 1.0e9));
       printf("max. error: %f\n", error);
 #if !defined(LIBXSMM_PARALLEL_KERNEL_TEST)
       l_retry_case = 0;
@@ -3799,22 +3805,18 @@ int main(int argc, char* argv []) {
     } else {
       if ( l_run_check == 1 ) {
         if (l_gemm_def.unary_postop == RELU_BITMASK) {
-          printf("%s %s %s %s %i %i %i %i %i %i %i %i %i %f %f %f\n", l_a_dt, l_b_dt, l_comp_dt, l_c_dt, l_m, l_n, l_k, l_lda, l_ldb, l_ldc, l_br, l_br_type, l_br_unroll, ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9), error,  error_bitmask );
+          printf("%s %s %s %s %i %i %i %i %i %i %i %i %i %f %f %f %f\n", l_a_dt, l_b_dt, l_comp_dt, l_c_dt, l_m, l_n, l_k, l_lda, l_ldb, l_ldc, l_br, l_br_type, l_br_unroll, ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9), ((double)((double)l_reps * (((((double)l_m * (double)l_k * l_dtype_a_size) + ((double)l_k * (double)l_n * l_dtype_b_size)) * (double)l_br) + ((double)l_m * (double)l_n * l_dtype_c_size)) * (double)l_n_threads)) / (l_runtime_libxsmm * 1.0e9), error,  error_bitmask );
         } else {
-          printf("%s %s %s %s %i %i %i %i %i %i %i %i %i %f %f\n", l_a_dt, l_b_dt, l_comp_dt, l_c_dt, l_m, l_n, l_k, l_lda, l_ldb, l_ldc, l_br, l_br_type, l_br_unroll, ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9), error );
+          printf("%s %s %s %s %i %i %i %i %i %i %i %i %i %f %f %f\n", l_a_dt, l_b_dt, l_comp_dt, l_c_dt, l_m, l_n, l_k, l_lda, l_ldb, l_ldc, l_br, l_br_type, l_br_unroll, ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9), ((double)((double)l_reps * (((((double)l_m * (double)l_k * l_dtype_a_size) + ((double)l_k * (double)l_n * l_dtype_b_size)) * (double)l_br) + ((double)l_m * (double)l_n * l_dtype_c_size)) * (double)l_n_threads)) / (l_runtime_libxsmm * 1.0e9), error );
         }
       } else {
-        printf("%s %s %s %s %i %i %i %i %i %i %i %i %i %f\n", l_a_dt, l_b_dt, l_comp_dt, l_c_dt, l_m, l_n, l_k, l_lda, l_ldb, l_ldc, l_br, l_br_type, l_br_unroll, ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9) );
+        printf("%s %s %s %s %i %i %i %i %i %i %i %i %i %f %f\n", l_a_dt, l_b_dt, l_comp_dt, l_c_dt, l_m, l_n, l_k, l_lda, l_ldb, l_ldc, l_br, l_br_type, l_br_unroll, ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9), ((double)((double)l_reps * (((((double)l_m * (double)l_k * l_dtype_a_size) + ((double)l_k * (double)l_n * l_dtype_b_size)) * (double)l_br) + ((double)l_m * (double)l_n * l_dtype_c_size)) * (double)l_n_threads)) / (l_runtime_libxsmm * 1.0e9) );
       }
       {
         const char *prefetch = NULL, *br_type = NULL;
         switch (l_prefetch) {
           case LIBXSMM_GEMM_PREFETCH_NONE: prefetch = "nopf"; break;
-          case LIBXSMM_GEMM_PREFETCH_BL2_VIA_C: prefetch = "BL2viaC"; break;
-          case LIBXSMM_GEMM_PREFETCH_AL2_AHEAD: prefetch = "curAL2"; break;
-          case LIBXSMM_GEMM_PREFETCH_AL2BL2_VIA_C_AHEAD: prefetch = "curAL2_BL2viaC"; break;
           case LIBXSMM_GEMM_PREFETCH_AL2: prefetch = "AL2"; break;
-          case LIBXSMM_GEMM_PREFETCH_AL2BL2_VIA_C: prefetch = "AL2_BL2viaC"; break;
           default: prefetch = "unknown";
         }
         switch (l_br_type) {
@@ -3840,6 +3842,7 @@ int main(int argc, char* argv []) {
       }
       printf("%fs for LIBXSMM\n", l_runtime_libxsmm);
       printf("%f GFLOPS\n", ((double)((double)l_reps * (double)l_m * (double)l_n * (double)l_k * (double)l_br * (double)l_n_threads) * 2.0) / (l_runtime_libxsmm * 1.0e9));
+      printf("%f GB/s\n", ((double)((double)l_reps * (((((double)l_m * (double)l_k * l_dtype_a_size) + ((double)l_k * (double)l_n * l_dtype_b_size)) * (double)l_br) + ((double)l_m * (double)l_n * l_dtype_c_size)) * (double)l_n_threads)) / (l_runtime_libxsmm * 1.0e9) );
       if ( l_retry_case == 0 ) {
         printf("max. error: %f\n", error);
       } else {

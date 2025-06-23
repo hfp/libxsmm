@@ -1390,6 +1390,10 @@
 #define LIBXSMM_ERR_UNSUP_SIZE            90053
 #define LIBXSMM_ERR_BCSC_BLOCK_SIZE       90054
 
+/* define some magic numbers (in bytes) for accessing the param structs
+   in the JIT code generators */
+#define LIBXSMM_MATRIX_ARG_OFFSET_PREFETCH            40
+
 #define LIBXSMM_HANDLE_ERROR(GENERATED_CODE, ERROR_CODE) libxsmm_handle_error( \
   GENERATED_CODE, ERROR_CODE, LIBXSMM_FUNCNAME, __FILE__, __LINE__, 1 < libxsmm_ninit ? libxsmm_verbosity : 1)
 #define LIBXSMM_HANDLE_ERROR_VERBOSE(GENERATED_CODE, ERROR_CODE) libxsmm_handle_error( \
@@ -2120,8 +2124,10 @@ typedef enum libxsmm_gemm_stack_var {
   LIBXSMM_GEMM_STACK_VAR_SCF_BRGEMM_PTR         = 34,
   LIBXSMM_GEMM_STACK_VAR_ZPT_BRGEMM_PTR         = 35,
   LIBXSMM_GEMM_STACK_VAR_BSCALE_PTR             = 36,
-  LIBXSMM_GEMM_STACK_VAR_BSCALE_BRGEMM_PTR      = 37
-
+  LIBXSMM_GEMM_STACK_VAR_BSCALE_BRGEMM_PTR      = 37,
+  LIBXSMM_GEMM_STACK_VAR_LDA_PTR                = 38,
+  LIBXSMM_GEMM_STACK_VAR_LDB_PTR                = 39,
+  LIBXSMM_GEMM_STACK_VAR_LDC_PTR                = 40
 } libxsmm_gemm_stack_var;
 
 #if 0
@@ -2252,6 +2258,9 @@ void libxsmm_reset_x86_gp_reg_mapping( libxsmm_gp_reg_mapping* io_gp_reg_mapping
 
 LIBXSMM_API_INTERN
 void libxsmm_reset_aarch64_gp_reg_mapping( libxsmm_gp_reg_mapping* io_gp_reg_mapping );
+
+LIBXSMM_API_INTERN
+void libxsmm_reset_rv64_gp_reg_mapping( libxsmm_gp_reg_mapping* io_gp_reg_mapping );
 
 LIBXSMM_API_INTERN
 unsigned int libxsmm_is_x86_vec_instr_single_precision( const unsigned int i_instr_number );
