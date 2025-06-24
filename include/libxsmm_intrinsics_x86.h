@@ -441,8 +441,8 @@ LIBXSMM_API_INLINE int LIBXSMM_INTRINSICS_BITSCANFWD64_SW(unsigned long long n) 
 # define LIBXSMM_INTRINSICS_BITSCANBWD64 LIBXSMM_INTRINSICS_BITSCANBWD64_SW
 # endif
 #elif defined(__GNUC__) && !defined(LIBXSMM_INTRINSICS_NONE)
-# define LIBXSMM_INTRINSICS_BITSCANFWD32(N) (0 != (N) ? __builtin_ctz(N) : 32)
-# define LIBXSMM_INTRINSICS_BITSCANFWD64(N) (0 != (N) ? __builtin_ctzll(N) : 64)
+# define LIBXSMM_INTRINSICS_BITSCANFWD32(N) (0 != (N) ? __builtin_ctz(N) : 0)
+# define LIBXSMM_INTRINSICS_BITSCANFWD64(N) (0 != (N) ? __builtin_ctzll(N) : 0)
 # define LIBXSMM_INTRINSICS_BITSCANBWD32(N) (0 != (N) ? (31 - __builtin_clz(N)) : 0)
 # define LIBXSMM_INTRINSICS_BITSCANBWD64(N) (0 != (N) ? (63 - __builtin_clzll(N)) : 0)
 #else /* fallback implementation */
