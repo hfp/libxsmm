@@ -49,20 +49,18 @@
 
 #define LIBXSMM_HASH(FN64, FN32, FN16, FN8, SEED, DATA, SIZE) do { \
   const uint8_t *begin = (const uint8_t*)(DATA); \
+  const uint8_t *const enda = LIBXSMM_ALIGN(begin, 8); \
   const uint8_t *const endb = begin + (SIZE); \
-  if (0 != LIBXSMM_MOD((uintptr_t)(DATA), 8)) { \
-    const uint8_t *const enda = LIBXSMM_ALIGN(begin, 8); \
-    if ((SIZE) > (size_t)(endb - enda)) { /* peel */ \
-      LIBXSMM_HASH_U32(FN32, SEED, begin, enda); \
-      LIBXSMM_HASH_U16(FN16, SEED, begin, enda); \
-      LIBXSMM_HASH_U8(FN8, SEED, begin, enda); \
-    } \
-    LIBXSMM_ASSUME_ALIGNED(begin, 8); \
+  if (begin != enda) { /* peel */ \
+    const uint8_t *const end = (enda < endb ? enda : endb); \
+    /* cannot use FN32 here due to unalignment */ \
+    LIBXSMM_HASH_U16(FN16, SEED, begin, end); \
+    LIBXSMM_HASH_U8(FN8, SEED, begin, end); \
   } \
   LIBXSMM_HASH_U64(FN64, SEED, begin, endb); \
   LIBXSMM_HASH_U32(FN32, SEED, begin, endb); \
   LIBXSMM_HASH_U16(FN16, SEED, begin, endb); \
-  return begin == endb ? (SEED) : FN8(SEED, begin); \
+  return (begin == endb ? (SEED) : FN8(SEED, begin)); \
 } while(0)
 
 
