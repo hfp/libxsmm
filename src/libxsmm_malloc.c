@@ -118,8 +118,8 @@ LIBXSMM_EXTERN_C typedef struct iJIT_Method_Load_V2 {
 # include "libxsmm_perf.h"
 #endif
 
-#if !defined(LIBXSMM_MALLOC_ALIGNMAX)
-# define LIBXSMM_MALLOC_ALIGNMAX (2 << 20) /* 2 MB */
+#if !defined(LIBXSMM_MALLOC_ALIGNMAX_BITS)
+# define LIBXSMM_MALLOC_ALIGNMAX_BITS 21 /* 2 MB */
 #endif
 #if !defined(LIBXSMM_MALLOC_ALIGNFCT)
 # define LIBXSMM_MALLOC_ALIGNFCT 16
@@ -205,10 +205,10 @@ LIBXSMM_EXTERN_C typedef struct iJIT_Method_Load_V2 {
 
 #if defined(LIBXSMM_MALLOC_LOCK_ALL) && defined(LIBXSMM_MALLOC_LOCK_PAGES) && 0 != (LIBXSMM_MALLOC_LOCK_PAGES)
 # if 1 == (LIBXSMM_MALLOC_LOCK_PAGES) || !defined(MLOCK_ONFAULT) || !defined(SYS_mlock2)
-#   define INTERNAL_MALLOC_LOCK_PAGES(BUFFER, SIZE) if ((LIBXSMM_MALLOC_ALIGNFCT * LIBXSMM_MALLOC_ALIGNMAX) <= (SIZE)) \
+#   define INTERNAL_MALLOC_LOCK_PAGES(BUFFER, SIZE) if ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) <= (SIZE)) \
       mlock(BUFFER, SIZE)
 # else
-#   define INTERNAL_MALLOC_LOCK_PAGES(BUFFER, SIZE) if ((LIBXSMM_MALLOC_ALIGNFCT * LIBXSMM_MALLOC_ALIGNMAX) <= (SIZE)) \
+#   define INTERNAL_MALLOC_LOCK_PAGES(BUFFER, SIZE) if ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) <= (SIZE)) \
       syscall(SYS_mlock2, BUFFER, SIZE, MLOCK_ONFAULT)
 # endif
 #else
@@ -253,7 +253,8 @@ LIBXSMM_EXTERN_C typedef struct iJIT_Method_Load_V2 {
     INTERNAL_REALLOC_REAL(RESULT, PTR, SIZE); \
   } \
   else { \
-    const int nzeros = LIBXSMM_INTRINSICS_BITSCANFWD64((uintptr_t)(PTR)), alignment = 1 << nzeros; \
+    const int nzeros = LIBXSMM_INTRINSICS_BITSCANFWD64((uintptr_t)(PTR)); \
+    const int alignment = 1 << LIBXSMM_MIN(nzeros, LIBXSMM_MALLOC_ALIGNMAX_BITS); \
     LIBXSMM_ASSERT(0 == ((uintptr_t)(PTR) & ~(0xFFFFFFFFFFFFFFFF << nzeros))); \
     if (NULL == (CALLER)) { /* libxsmm_trace_caller_id may allocate memory */ \
       internal_scratch_malloc(&(PTR), SIZE, (size_t)alignment, FLAGS, \
@@ -426,9 +427,9 @@ LIBXSMM_APIVAR_DEFINE(size_t internal_malloc_plocked);
 LIBXSMM_API_INTERN size_t libxsmm_alignment(size_t size, size_t alignment)
 {
   size_t result;
-  if ((LIBXSMM_MALLOC_ALIGNFCT * LIBXSMM_MALLOC_ALIGNMAX) <= size) {
+  if ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) <= size) {
     result = libxsmm_lcm(0 == alignment ? (LIBXSMM_ALIGNMENT)
-      : libxsmm_lcm(alignment, LIBXSMM_ALIGNMENT), LIBXSMM_MALLOC_ALIGNMAX);
+      : libxsmm_lcm(alignment, LIBXSMM_ALIGNMENT), 1 << LIBXSMM_MALLOC_ALIGNMAX_BITS);
   }
   else { /* small-size request */
     if ((LIBXSMM_MALLOC_ALIGNFCT * LIBXSMM_ALIGNMENT) <= size) {
@@ -1603,10 +1604,10 @@ LIBXSMM_API_INLINE void internal_xmalloc_mhint(void* buffer, size_t size)
   /* issue no warning as a failure seems to be related to the kernel version */
   madvise(buffer, size, MADV_NORMAL/*MADV_RANDOM*/
 # if defined(MADV_NOHUGEPAGE) /* if not available, we then take what we got (THP) */
-    | ((LIBXSMM_MALLOC_ALIGNMAX * LIBXSMM_MALLOC_ALIGNFCT) > size ? MADV_NOHUGEPAGE : 0)
+    | ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) > size ? MADV_NOHUGEPAGE : 0)
 # endif
 # if defined(MADV_DONTDUMP)
-    | ((LIBXSMM_MALLOC_ALIGNMAX * LIBXSMM_MALLOC_ALIGNFCT) > size ? 0 : MADV_DONTDUMP)
+    | ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) > size ? 0 : MADV_DONTDUMP)
 # endif
   );
 #else
@@ -1799,7 +1800,7 @@ LIBXSMM_API int libxsmm_xmalloc(void** memory, size_t size, size_t alignment,
           alloc_pagesize = system_info.dwPageSize;
           alloc_alignmax = GetLargePageMinimum();
         }
-        if ((LIBXSMM_MALLOC_ALIGNMAX * LIBXSMM_MALLOC_ALIGNFCT) <= size) { /* attempt to use large pages */
+        if ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) <= size) { /* attempt to use large pages */
           HANDLE process_token;
           alloc_alignment = (NULL == info
             ? (0 == alignment ? alloc_alignmax : libxsmm_lcm(alignment, alloc_alignmax))
@@ -1850,14 +1851,14 @@ LIBXSMM_API int libxsmm_xmalloc(void** memory, size_t size, size_t alignment,
           | MAP_UNINITIALIZED /* unlikely available */
 # endif
 # if defined(MAP_NORESERVE)
-          | (LIBXSMM_MALLOC_ALIGNMAX < size ? 0 : MAP_NORESERVE)
+          | ((1 << LIBXSMM_MALLOC_ALIGNMAX_BITS) < size ? 0 : MAP_NORESERVE)
 # endif
 # if defined(MAP_32BIT)
           | ((0 != (LIBXSMM_MALLOC_FLAG_X & flags) && 0 != map32) ? MAP_32BIT : 0)
 # endif
 # if defined(MAP_HUGETLB) && defined(LIBXSMM_MALLOC_HUGE_PAGES)
           | ((0 == (LIBXSMM_MALLOC_FLAG_X & flags)
-            && ((LIBXSMM_MALLOC_ALIGNMAX * LIBXSMM_MALLOC_ALIGNFCT) <= size ||
+            && ((LIBXSMM_MALLOC_ALIGNFCT * (1 << LIBXSMM_MALLOC_ALIGNMAX_BITS)) <= size ||
               0 != (LIBXSMM_MALLOC_FLAG_PHUGE & flags))
             && (internal_malloc_hugetlb + size) < limit_hugetlb) ? MAP_HUGETLB : 0)
 # endif
@@ -2380,7 +2381,8 @@ LIBXSMM_API LIBXSMM_ATTRIBUTE_MALLOC void* libxsmm_aligned_malloc(size_t size, s
 
 LIBXSMM_API void* libxsmm_realloc(size_t size, void* ptr)
 {
-  const int nzeros = LIBXSMM_INTRINSICS_BITSCANFWD64((uintptr_t)ptr), alignment = 1 << nzeros;
+  const int nzeros = LIBXSMM_INTRINSICS_BITSCANFWD64((uintptr_t)ptr);
+  const int alignment = 1 << LIBXSMM_MIN(nzeros, LIBXSMM_MALLOC_ALIGNMAX_BITS);
   LIBXSMM_ASSERT(0 == ((uintptr_t)ptr & ~(0xFFFFFFFFFFFFFFFF << nzeros)));
   LIBXSMM_INIT
   if (2 > internal_malloc_kind) {
