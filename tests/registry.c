@@ -14,23 +14,23 @@
 int main(int argc, char* argv[])
 {
   int result = EXIT_SUCCESS;
-  typedef struct key_type { int x, y, z; } key_type;
-  key_type key[] = {
-    { 0, 0, 0 },
-    { 0, 0, 1 },
-    { 0, 1, 0 },
-    { 0, 1, 1 },
-    { 1, 0, 0 },
-    { 1, 0, 1 },
-    { 1, 1, 0 },
-    { 1, 1, 1 }
+  typedef int key_type;
+  const key_type key[] = {
+    0, 0, 0,
+    0, 0, 1,
+    0, 1, 0,
+    0, 1, 1,
+    1, 0, 0,
+    1, 0, 1,
+    1, 1, 0,
+    1, 1, 1
   };
   const char* value[] = {
     "hello", "world", "libxsmm",
     "hello world", "hello libxsmm",
     "value", "next", "last"
   };
-  const size_t key_size = sizeof(*key);
+  const size_t key_size = sizeof(key_type) * 3;
 #if (0 != LIBXSMM_JIT) /* unused variable warning */
   const int small_key = 0, n = (int)sizeof(key) / (int)key_size;
   const char string[] = "payload";
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     libxsmm_xrelease(key, key_size);
   }
   for (i = 0; i < n && EXIT_SUCCESS == result; ++i) { /* register all entries */
-    result = (NULL != libxsmm_xregister(key + i, key_size,
+    result = (NULL != libxsmm_xregister(key + i * 3, key_size,
       strlen(value[i]) + 1, value[i]) ? EXIT_SUCCESS : EXIT_FAILURE);
   }
   if (EXIT_SUCCESS == result) {
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
       const char *const ivalue = (const char*)regentry;
       result = EXIT_FAILURE;
       for (i = 0; i < n; ++i) {
-        if (ikey->x == key[i].x && ikey->y == key[i].y && ikey->z == key[i].z) {
+        if (ikey[0/*x*/] == key[i*3+0/*x*/] && ikey[1/*y*/] == key[i*3+1/*y*/] && ikey[2/*z*/] == key[i*3+2/*z*/]) {
           result = (0 == strcmp(ivalue, value[i]) ? EXIT_SUCCESS : EXIT_FAILURE);
           break;
         }
@@ -115,7 +115,7 @@ int main(int argc, char* argv[])
       sizeof(string), string) ? EXIT_SUCCESS : EXIT_FAILURE);
   }
   for (i = 0; i < n && EXIT_SUCCESS == result; ++i) {
-    const char *const v = (char*)libxsmm_xdispatch(key + i, key_size);
+    const char *const v = (char*)libxsmm_xdispatch(key + i * 3, key_size);
     if (NULL != v) {
       libxsmm_kernel_info info;
       result = libxsmm_get_kernel_info(v, &info);
