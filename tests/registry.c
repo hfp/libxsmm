@@ -76,6 +76,10 @@ int main(int argc, char* argv[])
     result = (NULL == libxsmm_xregister(key, key_size,
       strlen(value[3]) + 1, value[3]) ? EXIT_SUCCESS : EXIT_FAILURE);
   }
+  if (EXIT_SUCCESS == result) { /* retrieve previously registered value */
+    const char *const v = (const char*)libxsmm_xdispatch(key, key_size);
+    result = ((NULL != v && 0 == strcmp(v, value[5])) ? EXIT_SUCCESS : EXIT_FAILURE);
+  }
   if (EXIT_SUCCESS == result) { /* release entry (enabled for user-data) */
     libxsmm_xrelease(key, key_size);
   }
@@ -133,7 +137,7 @@ int main(int argc, char* argv[])
     }
     else result = EXIT_FAILURE;
   }
-  if (EXIT_SUCCESS == result) {
+  if (EXIT_SUCCESS == result) { /* release user-entries for the sake of testing it */
     const void* regentry = libxsmm_get_registry_begin(LIBXSMM_KERNEL_KIND_USER, NULL);
     for (; NULL != regentry; regentry = libxsmm_get_registry_next(regentry, NULL)) {
       libxsmm_release_kernel(regentry);
