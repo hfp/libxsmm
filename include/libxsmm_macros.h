@@ -440,7 +440,7 @@ LIBXSMM_PRAGMA_DIAG_POP()
 
 #if !defined(LIBXSMM_UNPACKED) && (defined(_CRAYC) || \
   (0 == LIBXSMM_SYNC)/*Windows: missing pack(pop) error*/)
-# define LIBXSMM_UNPACKED
+# define LIBXSMM_UNPACKED /* CCE/Classic */
 #endif
 #if defined(_WIN32) && !defined(__GNUC__) && !defined(__clang__)
 # define LIBXSMM_ATTRIBUTE(A) __declspec(A)
