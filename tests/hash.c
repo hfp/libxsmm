@@ -105,28 +105,28 @@ int main(void)
     result = EXIT_FAILURE;
   }
 
-  a = 10102565835886989738ULL;
+  a = 17777927841313886634ULL;
   b = libxsmm_hash_string("01234567890");
   if (a != b) {
     FPRINTF(stderr, "ERROR line #%i: %llu != %llu\n", __LINE__, a, b);
     result = EXIT_FAILURE;
   }
 
-  a = 1229145680;
+  a = 3199039660;
   b = libxsmm_hash32(b);
   if (a != b) {
     FPRINTF(stderr, "ERROR line #%i: %llu != %llu\n", __LINE__, a, b);
     result = EXIT_FAILURE;
   }
 
-  a = 25916;
+  a = 22875;
   b = libxsmm_hash16((unsigned int)b);
   if (a != b) {
     FPRINTF(stderr, "ERROR line #%i: %llu != %llu\n", __LINE__, a, b);
     result = EXIT_FAILURE;
   }
 
-  a = 129;
+  a = 242;
   b = libxsmm_hash8((unsigned int)b);
   if (a != b) {
     FPRINTF(stderr, "ERROR line #%i: %llu != %llu\n", __LINE__, a, b);

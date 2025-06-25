@@ -33,7 +33,7 @@
 #define LIBXSMM_HASH_U8(FN, SEED, BEGIN, END) do { \
   LIBXSMM_ASSERT(NULL != (END)); \
   for (; (BEGIN) < (END); ++(BEGIN)) { LIBXSMM_ASSERT(NULL != (BEGIN)); \
-    SEED = FN(SEED, BEGIN); ++(BEGIN); \
+    SEED = FN(SEED, BEGIN); \
   } \
 } while(0)
 
@@ -54,8 +54,7 @@
   const uint8_t *const endb = begin + (SIZE); \
   if (begin != enda) { /* peel */ \
     const uint8_t *const end = (enda < endb ? enda : endb); \
-    /* cannot use FN32 here due to unalignment */ \
-    LIBXSMM_HASH_U16(FN16, SEED, begin, end); \
+    /* FN32 and FN16 cannot be used due to potential unalignment */ \
     LIBXSMM_HASH_U8(FN8, SEED, begin, end); \
   } \
   LIBXSMM_HASH_U64(FN64, SEED, begin, endb); \
