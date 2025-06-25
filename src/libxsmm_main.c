@@ -3315,7 +3315,6 @@ LIBXSMM_API void libxsmm_xrelease(const void* key, size_t key_size)
 }
 
 
-
 LIBXSMM_API libxsmm_xmmfunction libxsmm_xmmdispatch(const libxsmm_gemm_descriptor* descriptor)
 {
   libxsmm_xmmfunction result;
