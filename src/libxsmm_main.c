@@ -71,7 +71,7 @@
 #if !defined(LIBXSMM_REGUSER_HASH) && 1
 # define LIBXSMM_REGUSER_HASH
 #endif
-#if !defined(LIBXSMM_REGUSER_ALIGN) && 0
+#if !defined(LIBXSMM_REGUSER_ALIGN) && 1
 # define LIBXSMM_REGUSER_ALIGN
 #endif
 #if !defined(LIBXSMM_REGLOCK_TRY) && 0
@@ -3242,7 +3242,7 @@ LIBXSMM_API void* libxsmm_xregister(const void* key, size_t key_size,
     wrap.kind = (libxsmm_descriptor_kind)(LIBXSMM_DESCRIPTOR_SIGSIZE >= (offset + key_size)
       ? ((libxsmm_descriptor_kind)LIBXSMM_KERNEL_KIND_USER)
       : LIBXSMM_DESCRIPTOR_BIG(LIBXSMM_KERNEL_KIND_USER));
-    dst = internal_find_code(&wrap, offset + key_size, value_size).ptr;
+    dst = internal_find_code(&wrap, offset + key_size - sizeof(libxsmm_descriptor_kind), value_size).ptr;
     if (NULL != dst) {
       size_t size;
       if (EXIT_SUCCESS == libxsmm_get_malloc_xinfo(dst, &size, NULL/*flags*/, NULL/*extra*/)
@@ -3302,7 +3302,7 @@ LIBXSMM_API void* libxsmm_xdispatch(const void* key, size_t key_size)
     wrap.kind = (libxsmm_descriptor_kind)(LIBXSMM_DESCRIPTOR_SIGSIZE >= (offset + key_size)
       ? ((libxsmm_descriptor_kind)LIBXSMM_KERNEL_KIND_USER)
       : LIBXSMM_DESCRIPTOR_BIG(LIBXSMM_KERNEL_KIND_USER));
-    result = internal_find_code(&wrap, offset + key_size, 0/*user_size*/).ptr;
+    result = internal_find_code(&wrap, offset + key_size - sizeof(libxsmm_descriptor_kind), 0/*user_size*/).ptr;
   }
 #if !defined(NDEBUG)
   else {
