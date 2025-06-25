@@ -56,9 +56,9 @@
     /* FN64, FN32 and FN16 cannot be used (potential unalignment) */ \
     LIBXSMM_HASH_U8(FN8, SEED, begin, end); \
   } \
-  LIBXSMM_HASH_U64(FN64, SEED, begin, endb); \
-  LIBXSMM_HASH_U32(FN32, SEED, begin, endb); \
-  LIBXSMM_HASH_U16(FN16, SEED, begin, endb); \
+  LIBXSMM_HASH_U64(FN64, SEED, begin, endb); /* stream/loop */ \
+  LIBXSMM_HASH_U32(FN32, SEED, begin, endb); /* remainder */ \
+  LIBXSMM_HASH_U16(FN16, SEED, begin, endb); /* remainder */ \
   return (begin == endb ? (SEED) : FN8(SEED, begin)); \
 } while(0)
 
