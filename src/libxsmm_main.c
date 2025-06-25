@@ -71,6 +71,9 @@
 #if !defined(LIBXSMM_REGUSER_HASH) && 1
 # define LIBXSMM_REGUSER_HASH
 #endif
+#if !defined(LIBXSMM_REGUSER_ALIGN) && 0
+# define LIBXSMM_REGUSER_ALIGN
+#endif
 #if !defined(LIBXSMM_REGLOCK_TRY) && 0
 # define LIBXSMM_REGLOCK_TRY
 #endif
@@ -3171,11 +3174,14 @@ LIBXSMM_API_INLINE void* internal_get_registry_entry(int i, libxsmm_kernel_kind 
       const libxsmm_descriptor *const desc = &internal_registry_keys[info.registered].entry;
       if (LIBXSMM_DESCRIPTOR_KIND(desc->kind) == (int)kind) {
         if (NULL != key) {
+#if defined(LIBXSMM_REGUSER_ALIGN)
           if (LIBXSMM_KERNEL_KIND_USER == kind) {
             const size_t offset = LIBXSMM_UP2(desc->user.desc - desc->data, 4 < desc->user.size ? 8 : 4);
             *key = desc->data + offset;
           }
-          else *key = desc->user.desc;
+          else
+#endif
+          *key = desc->user.desc;
         }
         result = regentry.ptr;
         break;
@@ -3218,7 +3224,11 @@ LIBXSMM_API void* libxsmm_xregister(const void* key, size_t key_size,
   size_t value_size, const void* value_init)
 {
   libxsmm_descriptor wrap /*= { 0 }*/;
+#if defined(LIBXSMM_REGUSER_ALIGN)
   const size_t offset = LIBXSMM_UP2(wrap.user.desc - wrap.data, 4 < key_size ? 8 : 4);
+#else
+  const size_t offset = wrap.user.desc - wrap.data;
+#endif
   static int error_once = 0;
   void* result;
   LIBXSMM_INIT /* verbosity */
@@ -3226,8 +3236,8 @@ LIBXSMM_API void* libxsmm_xregister(const void* key, size_t key_size,
     void* dst;
 #if defined(LIBXSMM_UNPACKED) /* CCE/Classic */
     LIBXSMM_MEMZERO127(&wrap);
-#else
-    LIBXSMM_MEMSET127(wrap.data, 0, offset);
+#elif defined(LIBXSMM_REGUSER_ALIGN)
+    LIBXSMM_MEMSET127(&wrap, 0, offset);
 #endif
     LIBXSMM_MEMCPY127(wrap.data + offset, key, key_size);
     wrap.user.size = LIBXSMM_CAST_UCHAR(key_size);
@@ -3275,7 +3285,11 @@ LIBXSMM_API void* libxsmm_xregister(const void* key, size_t key_size,
 LIBXSMM_API void* libxsmm_xdispatch(const void* key, size_t key_size)
 {
   libxsmm_descriptor wrap /*= { 0 }*/;
+#if defined(LIBXSMM_REGUSER_ALIGN)
   const size_t offset = LIBXSMM_UP2(wrap.user.desc - wrap.data, 4 < key_size ? 8 : 4);
+#else
+  const size_t offset = wrap.user.desc - wrap.data;
+#endif
   void* result;
   LIBXSMM_INIT /* verbosity */
 #if !defined(NDEBUG)
@@ -3284,8 +3298,8 @@ LIBXSMM_API void* libxsmm_xdispatch(const void* key, size_t key_size)
   {
 #if defined(LIBXSMM_UNPACKED) /* CCE/Classic */
     LIBXSMM_MEMZERO127(&wrap);
-#else
-    LIBXSMM_MEMSET127(wrap.data, 0, offset);
+#elif defined(LIBXSMM_REGUSER_ALIGN)
+    LIBXSMM_MEMSET127(&wrap, 0, offset);
 #endif
     LIBXSMM_MEMCPY127(wrap.data + offset, key, key_size);
     wrap.user.size = LIBXSMM_CAST_UCHAR(key_size);
