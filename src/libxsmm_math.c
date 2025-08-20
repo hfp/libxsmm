@@ -411,9 +411,18 @@ LIBXSMM_API void libxsmm_matdiff_reduce(libxsmm_matdiff_info* output, const libx
 {
   if (NULL != output && NULL != input) {
     /* epsilon is determined before updating the output */
-    const double epsinp = libxsmm_matdiff_epsilon(input);
-    const double epsout = libxsmm_matdiff_epsilon(output);
-    if (output->linf_abs <= input->linf_abs) {
+    if (libxsmm_matdiff_epsilon(output) <= libxsmm_matdiff_epsilon(input)) {
+      const double ta = LIBXSMM_ABS(input->v_tst), ra = LIBXSMM_ABS(input->v_ref);
+      output->linf_abs = (ta != ra ? LIBXSMM_DELTA(input->v_ref, input->v_tst) : 0);
+      output->linf_rel = LIBXSMM_MATDIFF_DIV(output->linf_abs, ra, ta);
+      output->v_ref = input->v_ref;
+      output->v_tst = input->v_tst;
+      output->rsq = input->rsq;
+      output->m = input->m;
+      output->n = input->n;
+      output->i = input->r;
+    }
+    else if (output->linf_abs <= input->linf_abs) {
       output->linf_abs = input->linf_abs;
       output->linf_rel = input->linf_rel;
     }
@@ -429,45 +438,19 @@ LIBXSMM_API void libxsmm_matdiff_reduce(libxsmm_matdiff_info* output, const libx
       output->l2_abs = input->l2_abs;
       output->l2_rel = input->l2_rel;
     }
-    if (output->normf_rel <= input->normf_rel) {
-      output->normf_rel = input->normf_rel;
-    }
-    if (output->var_ref <= input->var_ref) {
-      output->var_ref = input->var_ref;
-    }
-    if (output->var_tst <= input->var_tst) {
-      output->var_tst = input->var_tst;
-    }
-    if (output->max_ref <= input->max_ref) {
-      output->max_ref = input->max_ref;
-    }
-    if (output->max_tst <= input->max_tst) {
-      output->max_tst = input->max_tst;
-    }
-    if (output->min_ref >= input->min_ref) {
-      output->min_ref = input->min_ref;
-    }
-    if (output->min_tst >= input->min_tst) {
-      output->min_tst = input->min_tst;
-    }
-    if (epsout <= epsinp) {
-      output->rsq = input->rsq;
-      output->v_ref = input->v_ref;
-      output->v_tst = input->v_tst;
-      output->m = input->m;
-      output->n = input->n;
-      output->i = input->r;
-    }
+    if (output->normf_rel <= input->normf_rel) output->normf_rel = input->normf_rel;
+    if (output->var_ref <= input->var_ref) output->var_ref = input->var_ref;
+    if (output->var_tst <= input->var_tst) output->var_tst = input->var_tst;
+    if (output->max_ref <= input->max_ref) output->max_ref = input->max_ref;
+    if (output->max_tst <= input->max_tst) output->max_tst = input->max_tst;
+    if (output->min_ref >= input->min_ref) output->min_ref = input->min_ref;
+    if (output->min_tst >= input->min_tst) output->min_tst = input->min_tst;
     output->avg_ref = 0.5 * (output->avg_ref + input->avg_ref);
     output->avg_tst = 0.5 * (output->avg_tst + input->avg_tst);
     output->l1_ref += input->l1_ref;
     output->l1_tst += input->l1_tst;
-    if (0 != output->r || 0 == input->r) {
-      ++output->r;
-    }
-    else {
-      output->r = input->r;
-    }
+    if (0 != output->r || 0 == input->r) ++output->r;
+    else output->r = input->r;
   }
   else {
     libxsmm_matdiff_clear(output);
